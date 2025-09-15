@@ -1,4 +1,4 @@
-class ExperienceModel {
+class Experience {
   final String id;
   final String company;
   final String jobTitle;
@@ -11,7 +11,7 @@ class ExperienceModel {
 
   String? description;
 
-  ExperienceModel({
+  Experience({
     required this.id,
     required this.company,
     required this.jobTitle,

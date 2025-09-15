@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:internpath/data/models/experience_model.dart';
-import 'package:internpath/data/models/user_model.dart';
+import 'package:internpath/domain/entities/experience.dart';
+import 'package:internpath/domain/entities/user.dart';
 import 'package:internpath/utils/thousands_formatter.dart';
 
 class CreateExperience extends StatefulWidget {
-  final ExperienceModel? experience; // Null if creating a new experience
+  final Experience? experience; // Null if creating a new experience
 
   const CreateExperience({super.key, this.experience});
 

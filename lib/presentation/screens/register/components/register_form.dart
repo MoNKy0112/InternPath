@@ -1,5 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:internpath/data/firebase/firebase_auth_service.dart';
+import 'package:internpath/data/repositories/user_repository_impl.dart';
+import 'package:internpath/domain/repositories/user_repository.dart';
+import 'package:internpath/domain/usecases/auth_usecases.dart';
 
 class RegisterForm extends StatefulWidget {
   const RegisterForm({super.key});
@@ -16,6 +21,20 @@ class _RegisterFormState extends State<RegisterForm> {
   final TextEditingController _confirmPasswordController =
       TextEditingController();
 
+  late final AuthUseCases _authUseCases;
+
+  @override
+  void initState() {
+    super.initState();
+    final authService = FirebaseAuthService();
+    final FirebaseFirestore firestore = FirebaseFirestore.instance;
+    final UserRepository userRepository = UserRepositoryImpl(
+      authService,
+      firestore,
+    );
+    _authUseCases = AuthUseCases(userRepository);
+  }
+
   @override
   void dispose() {
     _fullNameController.dispose();
@@ -30,9 +49,37 @@ class _RegisterFormState extends State<RegisterForm> {
   //Global key para el formulario
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  void register() {
+  Future<void> register() async {
     // Implement your register logic here
-    print('Register button pressed');
+    final fullName = _fullNameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+    if (password != confirmPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Las contraseñas no coinciden')),
+      );
+      return;
+    }
+    try {
+      await _authUseCases.registerWithEmailAndPassword(
+        fullName,
+        email,
+        password,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Registro exitoso')));
+      context.go('/home');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error en el registro: $e')));
+    }
   }
 
   void routeLogin() {

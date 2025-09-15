@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:internpath/data/models/experience_model.dart';
+import 'package:internpath/domain/entities/experience.dart';
 
 class ExperienceCard extends StatelessWidget {
-  final ExperienceModel experience;
+  final Experience experience;
 
   const ExperienceCard({super.key, required this.experience});
 

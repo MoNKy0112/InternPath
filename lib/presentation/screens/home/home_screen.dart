@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:internpath/data/models/experience_model.dart';
+import 'package:internpath/domain/entities/experience.dart';
 import 'package:internpath/presentation/widgets/app_scaffold.dart';
 import 'package:internpath/presentation/widgets/experience_card.dart';
 
@@ -16,7 +16,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<ExperienceCard> experiences = [
     // Example experiences
     ExperienceCard(
-      experience: ExperienceModel(
+      experience: Experience(
         id: '1',
         company: 'Tech Corp',
         jobTitle: 'Software Intern',
@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     ),
     ExperienceCard(
-      experience: ExperienceModel(
+      experience: Experience(
         id: '2',
         company: 'Innovate LLC',
         jobTitle: 'Data Science Intern',
