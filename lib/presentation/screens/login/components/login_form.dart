@@ -1,5 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:internpath/data/firebase/firebase_auth_service.dart';
+import 'package:internpath/data/repositories/user_repository_impl.dart';
+import 'package:internpath/domain/repositories/user_repository.dart';
+import 'package:internpath/domain/usecases/auth_usecases.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
@@ -13,10 +18,25 @@ class _LoginFormState extends State<LoginForm> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  late final AuthUseCases _authUseCases;
+
   //Global key para el formulario
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   bool _isPasswordVisible = false;
+  bool loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final authService = FirebaseAuthService();
+    final FirebaseFirestore firestore = FirebaseFirestore.instance;
+    final UserRepository userRepository = UserRepositoryImpl(
+      authService,
+      firestore,
+    );
+    _authUseCases = AuthUseCases(userRepository);
+  }
 
   @override
   void dispose() {
@@ -25,14 +45,37 @@ class _LoginFormState extends State<LoginForm> {
     super.dispose();
   }
 
-  void login() {
+  Future<void> login() async {
     if (_formKey.currentState!.validate()) {
+      setState(() {
+        loading = true;
+      });
       final email = _emailController.text;
       final password = _passwordController.text;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Intentando iniciar sesión con $email")),
       );
+      // Loader
+      await _authUseCases
+          .signInWithEmailAndPassword(email, password)
+          .then((user) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Bienvenido ${user.fullName}")),
+            );
+            context.go('/home');
+          })
+          .catchError((error) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Error al iniciar sesión: $error")),
+            );
+          })
+          .whenComplete(() {
+            setState(() {
+              loading = false;
+            });
+          });
     }
   }
 

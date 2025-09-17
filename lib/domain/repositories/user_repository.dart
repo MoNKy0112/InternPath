@@ -8,6 +8,7 @@ abstract class UserRepository {
     String password,
   );
   Future<void> signOut();
+  User? getCurrentUser();
   Future<User?> getUserById(String userId);
   Future<void> updateProfile(User user);
 }

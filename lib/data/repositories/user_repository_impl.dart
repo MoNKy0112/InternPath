@@ -59,4 +59,11 @@ class UserRepositoryImpl implements UserRepository {
     final model = UserModel.fromEntity(user);
     await _firestore.collection('users').doc(user.id).set(model.toMap());
   }
+
+  @override
+  User? getCurrentUser() {
+    final fb.User? fbUser = _authService.currentUser;
+    if (fbUser == null) return null;
+    return getUserById(fbUser.uid) as User?;
+  }
 }

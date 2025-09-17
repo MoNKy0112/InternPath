@@ -1,8 +1,13 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:internpath/data/firebase/firebase_experience_service.dart';
+import 'package:internpath/data/repositories/experience_repository_impl.dart';
 import 'package:internpath/domain/entities/experience.dart';
 import 'package:internpath/domain/entities/user.dart';
+import 'package:internpath/domain/usecases/experience_usecases.dart';
 import 'package:internpath/utils/thousands_formatter.dart';
 
 class CreateExperience extends StatefulWidget {
@@ -26,12 +31,20 @@ class _CreateExperienceState extends State<CreateExperience> {
 
   final _formKey = GlobalKey<FormState>();
 
+  late final ExperienceUseCases _experienceUseCases;
+
   @override
   void initState() {
     super.initState();
+    final FirebaseFirestore firestore = FirebaseFirestore.instance;
+    final experienceRepository = ExperienceRepositoryImpl(
+      FirebaseExperienceService(firestore),
+    );
+    _experienceUseCases = ExperienceUseCases(experienceRepository);
+
     if (widget.experience != null) {
-      _companyController.text = widget.experience!.company;
-      _jobTitleController.text = widget.experience!.jobTitle;
+      _companyController.text = widget.experience!.companyId;
+      _jobTitleController.text = widget.experience!.positionTitle;
       _descriptionController.text = widget.experience!.description ?? '';
       _salaryController.text = widget.experience!.salary.toString();
       _flexSchedule = widget.experience!.flexSchedule;
@@ -53,6 +66,54 @@ class _CreateExperienceState extends State<CreateExperience> {
     _startDateController.dispose();
     _endDateController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveExperience() async {
+    if (_formKey.currentState!.validate()) {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Usuario no autenticado')));
+        return;
+      }
+      final experience = Experience(
+        id: widget.experience?.id ?? '',
+        companyId: _companyController.text,
+        positionTitle: _jobTitleController.text,
+        description: _descriptionController.text,
+        salary:
+            double.tryParse(_salaryController.text.replaceAll('.', '')) ?? 0,
+        flexSchedule: _flexSchedule,
+        continueOption: _continueOption,
+        startDate:
+            DateTime.tryParse(_startDateController.text) ?? DateTime.now(),
+        endDate: DateTime.tryParse(_endDateController.text) ?? DateTime.now(),
+        userId: userId,
+      );
+
+      if (widget.experience == null) {
+        await _experienceUseCases.addExperience(userId, experience);
+      } else {
+        await _experienceUseCases.updateExperience(
+          userId,
+          widget.experience!.id,
+          experience,
+        );
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.experience == null
+                ? 'Experiencia creada exitosamente'
+                : 'Experiencia actualizada exitosamente',
+          ),
+        ),
+      );
+      context.go('/');
+    }
   }
 
   @override
@@ -181,8 +242,22 @@ class _CreateExperienceState extends State<CreateExperience> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-
-                  ]
+                    ElevatedButton(
+                      onPressed: _saveExperience,
+                      child: Text(
+                        widget.experience == null ? 'Crear' : 'Actualizar',
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        context.go('/');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey,
+                      ),
+                      child: const Text('Cancelar'),
+                    ),
+                  ],
                 ),
               ],
             ),

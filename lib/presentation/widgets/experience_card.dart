@@ -22,11 +22,11 @@ class ExperienceCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    experience.position,
+                    experience.positionTitle,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   Text(
-                    experience.company,
+                    experience.companyId,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   Text(

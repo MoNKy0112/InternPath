@@ -1,8 +1,8 @@
 class Experience {
   final String id;
-  final String company;
-  final String jobTitle;
-  final num salary;
+  final String companyId;
+  final String positionTitle;
+  final double salary;
   final DateTime startDate;
   final DateTime endDate;
   final String userId;
@@ -13,8 +13,8 @@ class Experience {
 
   Experience({
     required this.id,
-    required this.company,
-    required this.jobTitle,
+    required this.companyId,
+    required this.positionTitle,
     required this.salary,
     required this.startDate,
     required this.endDate,
@@ -23,6 +23,4 @@ class Experience {
     required this.continueOption,
     this.description,
   });
-
-  String get position => jobTitle;
 }
