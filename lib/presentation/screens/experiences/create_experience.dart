@@ -6,14 +6,13 @@ import 'package:go_router/go_router.dart';
 import 'package:internpath/data/firebase/firebase_experience_service.dart';
 import 'package:internpath/data/repositories/experience_repository_impl.dart';
 import 'package:internpath/domain/entities/experience.dart';
-import 'package:internpath/domain/entities/user.dart';
 import 'package:internpath/domain/usecases/experience_usecases.dart';
 import 'package:internpath/utils/thousands_formatter.dart';
 
 class CreateExperience extends StatefulWidget {
-  final Experience? experience; // Null if creating a new experience
+  final String? experienceId;
 
-  const CreateExperience({super.key, this.experience});
+  const CreateExperience({super.key, this.experienceId});
 
   @override
   State<CreateExperience> createState() => _CreateExperienceState();
@@ -33,6 +32,8 @@ class _CreateExperienceState extends State<CreateExperience> {
 
   late final ExperienceUseCases _experienceUseCases;
 
+  late final Experience? experience;
+
   @override
   void initState() {
     super.initState();
@@ -42,16 +43,21 @@ class _CreateExperienceState extends State<CreateExperience> {
     );
     _experienceUseCases = ExperienceUseCases(experienceRepository);
 
-    if (widget.experience != null) {
-      _companyController.text = widget.experience!.companyId;
-      _jobTitleController.text = widget.experience!.positionTitle;
-      _descriptionController.text = widget.experience!.description ?? '';
-      _salaryController.text = widget.experience!.salary.toString();
-      _flexSchedule = widget.experience!.flexSchedule;
-      _continueOption = widget.experience!.continueOption;
-      _startDateController.text = widget.experience!.startDate
-          .toIso8601String();
-      _endDateController.text = widget.experience!.endDate.toIso8601String();
+    if (widget.experienceId != null) {
+      _loadExperience(widget.experienceId!);
+    } else {
+      experience = Experience(
+        id: '',
+        companyId: '',
+        positionTitle: '',
+        description: '',
+        salary: 0,
+        flexSchedule: false,
+        continueOption: false,
+        startDate: DateTime.now(),
+        endDate: DateTime.now(),
+        userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+      );
     }
   }
 
@@ -68,6 +74,37 @@ class _CreateExperienceState extends State<CreateExperience> {
     super.dispose();
   }
 
+  Future<void> _loadExperience(String experienceId) async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Usuario no autenticado')));
+      return;
+    }
+    final experience = await _experienceUseCases.getExperienceById(
+      experienceId,
+    );
+    if (experience != null) {
+      setState(() {
+        _companyController.text = experience.companyId;
+        _jobTitleController.text = experience.positionTitle;
+        _descriptionController.text = experience.description ?? '';
+        _salaryController.text = experience.salary.toString();
+        _flexSchedule = experience.flexSchedule;
+        _continueOption = experience.continueOption;
+        _startDateController.text = experience.startDate.toIso8601String();
+        _endDateController.text = experience.endDate.toIso8601String();
+      });
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Experiencia no encontrada')),
+      );
+      context.go('/');
+    }
+  }
+
   Future<void> _saveExperience() async {
     if (_formKey.currentState!.validate()) {
       final userId = FirebaseAuth.instance.currentUser?.uid;
@@ -78,7 +115,7 @@ class _CreateExperienceState extends State<CreateExperience> {
         return;
       }
       final experience = Experience(
-        id: widget.experience?.id ?? '',
+        id: widget.experienceId ?? '',
         companyId: _companyController.text,
         positionTitle: _jobTitleController.text,
         description: _descriptionController.text,
@@ -92,12 +129,12 @@ class _CreateExperienceState extends State<CreateExperience> {
         userId: userId,
       );
 
-      if (widget.experience == null) {
+      if (widget.experienceId == null) {
         await _experienceUseCases.addExperience(userId, experience);
       } else {
         await _experienceUseCases.updateExperience(
           userId,
-          widget.experience!.id,
+          widget.experienceId!,
           experience,
         );
       }
@@ -106,7 +143,7 @@ class _CreateExperienceState extends State<CreateExperience> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            widget.experience == null
+            widget.experienceId == null
                 ? 'Experiencia creada exitosamente'
                 : 'Experiencia actualizada exitosamente',
           ),
@@ -130,7 +167,7 @@ class _CreateExperienceState extends State<CreateExperience> {
               },
             ),
             Text(
-              widget.experience == null
+              widget.experienceId == null
                   ? 'Crear Experiencia'
                   : 'Editar Experiencia',
             ),
@@ -245,7 +282,7 @@ class _CreateExperienceState extends State<CreateExperience> {
                     ElevatedButton(
                       onPressed: _saveExperience,
                       child: Text(
-                        widget.experience == null ? 'Crear' : 'Actualizar',
+                        widget.experienceId == null ? 'Crear' : 'Actualizar',
                       ),
                     ),
                     ElevatedButton(

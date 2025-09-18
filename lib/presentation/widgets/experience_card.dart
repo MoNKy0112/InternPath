@@ -1,10 +1,21 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:internpath/domain/entities/experience.dart';
 
 class ExperienceCard extends StatelessWidget {
   final Experience experience;
 
   const ExperienceCard({super.key, required this.experience});
+
+  void deleteExperience(String experienceId) {
+    // TODO: crear vista de confirmación
+  }
+
+  void editExperience(String experienceId, BuildContext context) {
+    // redireccionar a la pantalla de edición
+    context.go('/experiences/edit/$experienceId');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +51,22 @@ class ExperienceCard extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+            Column(
+              children: [
+                // si el usuario actual es el dueño de la experiencia, mostrar botones de editar y eliminar
+                if (FirebaseAuth.instance.currentUser?.uid ==
+                    experience.userId) ...[
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.grey),
+                    onPressed: () => editExperience(experience.id, context),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => deleteExperience(experience.id),
+                  ),
+                ],
+              ],
             ),
           ],
         ),

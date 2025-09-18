@@ -121,22 +121,20 @@ class _HomeScreenState extends State<HomeScreen> {
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
           final user = FirebaseAuth.instance.currentUser;
-
+          print(user);
           if (user == null) {
             // 👇 redirigimos *después* del build, sin romperlo
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
-              context.go('/login');
             });
             return const SizedBox.shrink();
           }
 
           // Aquí cambiamos esto:
           if (experiences.isEmpty && !isLoading) {
-            // _loadExperiences("test11111"); ❌
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
-              _loadExperiences("test11111"); // ahora usamos el uid real
+              _loadExperiences(user.uid); // ahora usamos el uid real
             });
           }
 
@@ -145,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
               if (!isLoading &&
                   scrollInfo.metrics.pixels ==
                       scrollInfo.metrics.maxScrollExtent) {
-                _loadExperiences("test11111", loadMore: true);
+                _loadExperiences(user.uid, loadMore: true);
               }
               return false;
             },

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:internpath/presentation/screens/experiences/create_experience.dart';
 import 'package:internpath/presentation/screens/home/home_screen.dart';
@@ -29,6 +28,14 @@ class AppRouter {
         path: '/experiences/create',
         name: 'create_experience',
         builder: (context, state) => const CreateExperience(),
+      ),
+      GoRoute(
+        path: '/experiences/edit/:id',
+        name: 'edit_experience',
+        builder: (context, state) {
+          final experienceId = state.pathParameters['id'];
+          return CreateExperience(experienceId: experienceId);
+        },
       ),
     ],
   );
