@@ -2,17 +2,61 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:internpath/domain/entities/experience.dart';
+import 'package:internpath/domain/usecases/experience_usecases.dart';
+import 'package:provider/provider.dart';
 
 class ExperienceCard extends StatelessWidget {
   final Experience experience;
 
   const ExperienceCard({super.key, required this.experience});
 
-  void deleteExperience(String experienceId) {
-    // TODO: crear vista de confirmación
+  Future<void> deleteExperience(
+    BuildContext context,
+    String experienceId,
+  ) async {
+    Navigator.of(context).pop(); // Cerrar el diálogo
+    final experienceUseCase = context.read<ExperienceUseCases>();
+    await experienceUseCase.deleteExperience(
+      FirebaseAuth.instance.currentUser!.uid,
+      experienceId,
+    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Experiencia eliminada correctamente')),
+      );
+    }
   }
 
-  void editExperience(String experienceId, BuildContext context) {
+  void showDeleteExperienceDialog(BuildContext context, String experienceId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirmar eliminación'),
+          content: const Text(
+            '¿Estás seguro de que deseas eliminar esta experiencia?',
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancelar'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Cerrar el diálogo
+              },
+            ),
+            TextButton(
+              child: const Text(
+                'Eliminar',
+                style: TextStyle(color: Colors.red),
+              ),
+              onPressed: () => deleteExperience(context, experienceId),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void editExperience(BuildContext context, String experienceId) {
     // redireccionar a la pantalla de edición
     context.go('/experiences/edit/$experienceId');
   }
@@ -59,11 +103,12 @@ class ExperienceCard extends StatelessWidget {
                     experience.userId) ...[
                   IconButton(
                     icon: const Icon(Icons.edit, color: Colors.grey),
-                    onPressed: () => editExperience(experience.id, context),
+                    onPressed: () => editExperience(context, experience.id),
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => deleteExperience(experience.id),
+                    onPressed: () =>
+                        showDeleteExperienceDialog(context, experience.id),
                   ),
                 ],
               ],

@@ -1,13 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:internpath/data/firebase/firebase_experience_service.dart';
-import 'package:internpath/data/repositories/experience_repository_impl.dart';
 import 'package:internpath/domain/entities/experience.dart';
 import 'package:internpath/domain/usecases/experience_usecases.dart';
 import 'package:internpath/utils/thousands_formatter.dart';
+import 'package:provider/provider.dart';
 
 class CreateExperience extends StatefulWidget {
   final String? experienceId;
@@ -30,18 +28,14 @@ class _CreateExperienceState extends State<CreateExperience> {
 
   final _formKey = GlobalKey<FormState>();
 
-  late final ExperienceUseCases _experienceUseCases;
+  late ExperienceUseCases _experienceUseCases;
 
   late final Experience? experience;
 
   @override
   void initState() {
     super.initState();
-    final FirebaseFirestore firestore = FirebaseFirestore.instance;
-    final experienceRepository = ExperienceRepositoryImpl(
-      FirebaseExperienceService(firestore),
-    );
-    _experienceUseCases = ExperienceUseCases(experienceRepository);
+    _experienceUseCases = context.read<ExperienceUseCases>();
 
     if (widget.experienceId != null) {
       _loadExperience(widget.experienceId!);

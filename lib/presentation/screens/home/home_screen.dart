@@ -1,13 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:internpath/data/firebase/firebase_experience_service.dart';
-import 'package:internpath/data/repositories/experience_repository_impl.dart';
 import 'package:internpath/domain/entities/experience.dart';
 import 'package:internpath/domain/usecases/experience_usecases.dart';
 import 'package:internpath/presentation/widgets/app_scaffold.dart';
 import 'package:internpath/presentation/widgets/experience_card.dart';
+import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,7 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int currentPageIndex = 0;
 
-  late final ExperienceUseCases _experienceUseCases;
+  late ExperienceUseCases _experienceUseCases;
 
   final List<Experience> experiences = [];
   bool isLoading = false;
@@ -60,11 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    final FirebaseFirestore firestore = FirebaseFirestore.instance;
-    final experienceRepository = ExperienceRepositoryImpl(
-      FirebaseExperienceService(firestore),
-    );
-    _experienceUseCases = ExperienceUseCases(experienceRepository);
+    _experienceUseCases = context.read<ExperienceUseCases>();
     _loadExperiences("test11111");
   }
 

@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:internpath/core/dependency_injection.dart';
 import 'package:internpath/router/app_router.dart';
 //flutter imports
 import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: DependencyInjection.buildProviders(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
