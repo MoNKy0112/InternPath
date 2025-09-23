@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:internpath/presentation/screens/experiences/create_experience.dart';
+import 'package:internpath/presentation/screens/experiences/experience_list.dart';
 import 'package:internpath/presentation/screens/home/home_screen.dart';
 
 import 'package:internpath/presentation/screens/login/login_screen.dart';
@@ -36,6 +37,18 @@ class AppRouter {
           final experienceId = state.pathParameters['id'];
           return CreateExperience(experienceId: experienceId);
         },
+      ),
+      GoRoute(
+        path: '/experiences',
+        name: 'experience_list',
+        builder: (context, state) =>
+            const ExperienceList(isPersonalExperienceList: false),
+      ),
+      GoRoute(
+        path: '/experiences/personal',
+        name: 'personal_experience_list',
+        builder: (context, state) =>
+            const ExperienceList(isPersonalExperienceList: true),
       ),
     ],
   );

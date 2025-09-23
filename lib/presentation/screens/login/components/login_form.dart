@@ -1,10 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:internpath/data/firebase/firebase_auth_service.dart';
-import 'package:internpath/data/repositories/user_repository_impl.dart';
-import 'package:internpath/domain/repositories/user_repository.dart';
 import 'package:internpath/domain/usecases/auth_usecases.dart';
+import 'package:provider/provider.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
@@ -29,13 +26,7 @@ class _LoginFormState extends State<LoginForm> {
   @override
   void initState() {
     super.initState();
-    final authService = FirebaseAuthService();
-    final FirebaseFirestore firestore = FirebaseFirestore.instance;
-    final UserRepository userRepository = UserRepositoryImpl(
-      authService,
-      firestore,
-    );
-    _authUseCases = AuthUseCases(userRepository);
+    _authUseCases = context.read<AuthUseCases>();
   }
 
   @override

@@ -7,52 +7,21 @@ import 'package:internpath/presentation/widgets/app_scaffold.dart';
 import 'package:internpath/presentation/widgets/experience_card.dart';
 import 'package:provider/provider.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class ExperienceList extends StatefulWidget {
+  const ExperienceList({super.key, required this.isPersonalExperienceList});
+
+  final bool isPersonalExperienceList;
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<ExperienceList> createState() => _ExperienceListState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  int currentPageIndex = 0;
-
+class _ExperienceListState extends State<ExperienceList> {
   late ExperienceUseCases _experienceUseCases;
 
   final List<Experience> experiences = [];
   bool isLoading = false;
   Experience? lastExperience;
-  // final List<ExperienceCard> experiences = [
-  //   // Example experiences
-  //   ExperienceCard(
-  //     experience: Experience(
-  //       id: '1',
-  //       companyId: 'Tech Corp',
-  //       positionTitle: 'Software Intern',
-  //       startDate: DateTime(2023, 6, 1),
-  //       endDate: DateTime(2023, 8, 31),
-  //       description: 'Worked on developing mobile applications.',
-  //       userId: 'user123',
-  //       flexSchedule: true,
-  //       continueOption: false,
-  //       salary: 1,
-  //     ),
-  //   ),
-  //   ExperienceCard(
-  //     experience: Experience(
-  //       id: '2',
-  //       companyId: 'Innovate LLC',
-  //       positionTitle: 'Data Science Intern',
-  //       startDate: DateTime(2023, 5, 1),
-  //       endDate: DateTime(2023, 7, 31),
-  //       description: 'Assisted in data analysis and visualization projects.',
-  //       userId: 'user123',
-  //       flexSchedule: false,
-  //       continueOption: true,
-  //       salary: 100000,
-  //     ),
-  //   ),
-  // ];
 
   @override
   void initState() {
@@ -69,11 +38,12 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => isLoading = true);
 
     try {
-      final newExperiences = await _experienceUseCases.getAllExperiences(
-        excludeUserId: userId,
-        limit: 10,
-        lastExperience: loadMore ? lastExperience : null,
-      );
+      final newExperiences = widget.isPersonalExperienceList
+          ? await _experienceUseCases.getExperiencesByUserId(userId)
+          : await _experienceUseCases.getAllExperiences(
+              excludeUserId: userId,
+              lastExperience: loadMore ? lastExperience : null,
+            );
 
       if (!mounted) return; // 👈 aquí verificamos antes de modificar el estado
 
@@ -124,8 +94,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return AppScaffold(
-      title: 'Home Screen',
-      currentPageIndex: currentPageIndex,
+      title: widget.isPersonalExperienceList
+          ? "Mis Experiencias"
+          : "Experiencias",
+      currentPageIndex: 2,
       scaffoldExtras: {
         'floatingActionButton': FloatingActionButton(
           onPressed: () {
