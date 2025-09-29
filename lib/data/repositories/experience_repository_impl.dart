@@ -16,8 +16,18 @@ class ExperienceRepositoryImpl extends ExperienceRepository {
   }
 
   @override
-  Future<List<Experience>> getExperiencesByUserId(String userId) async {
-    final dataList = await _firebaseService.getByUserId(userId);
+  Future<List<Experience>> getExperiencesByUserId(
+    String userId, {
+    int limit = 10,
+    Experience? lastExperience,
+  }) async {
+    final dataList = await _firebaseService.getByUserId(
+      userId,
+      limit: limit,
+      lastExperience: lastExperience != null
+          ? ExperienceModel.fromEntity(lastExperience)
+          : null,
+    );
     return dataList.map((data) => data.toEntity()).toList();
   }
 

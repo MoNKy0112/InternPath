@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:internpath/presentation/screens/register/components/register_form.dart';
+import 'package:internpath/presentation/screens/user/register/components/register_form.dart';
 import 'package:internpath/presentation/widgets/logo_widget.dart';
 
 class RegisterScreen extends StatefulWidget {

@@ -22,5 +22,16 @@ class FirebaseAuthService {
 
   Future<void> signOut() => _auth.signOut();
 
+  Future<void> sendPasswordResetEmail(String email) {
+    return _auth.sendPasswordResetEmail(email: email);
+  }
+
+  Future<void> verifyEmail() async {
+    final user = _auth.currentUser;
+    if (user != null && !user.emailVerified) {
+      await user.sendEmailVerification();
+    }
+  }
+
   fb.User? get currentUser => _auth.currentUser;
 }

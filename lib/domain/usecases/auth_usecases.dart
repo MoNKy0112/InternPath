@@ -21,4 +21,9 @@ class AuthUseCases {
       userRepository.getUserById(userId);
 
   Future<void> updateProfile(User user) => userRepository.updateProfile(user);
+
+  Future<void> sendPasswordResetEmail(String email) =>
+      userRepository.sendPasswordResetEmail(email);
+
+  Future<void> verifyEmail() => userRepository.verifyEmail();
 }

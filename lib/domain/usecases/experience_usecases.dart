@@ -18,8 +18,15 @@ class ExperienceUseCases {
   Future<void> deleteExperience(String userId, String experienceId) =>
       experienceRepository.deleteExperience(userId, experienceId);
 
-  Future<List<Experience>> getExperiencesByUserId(String userId) =>
-      experienceRepository.getExperiencesByUserId(userId);
+  Future<List<Experience>> getExperiencesByUserId(
+    String userId, {
+    int limit = 10,
+    Experience? lastExperience,
+  }) => experienceRepository.getExperiencesByUserId(
+    userId,
+    limit: limit,
+    lastExperience: lastExperience,
+  );
 
   Future<Experience?> getExperienceById(String experienceId) =>
       experienceRepository.getExperienceById(experienceId);

@@ -72,7 +72,7 @@ class _LoginFormState extends State<LoginForm> {
 
   void forgotPassword() {
     // Implement your forgot password logic here
-    print('Forgot Password button pressed');
+    context.go('/reset-password');
   }
 
   void routeSignUp() {

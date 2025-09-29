@@ -14,11 +14,23 @@ class FirebaseExperienceService {
     return ExperienceModel.fromDocument(doc);
   }
 
-  Future<List<ExperienceModel>> getByUserId(String userId) async {
-    final querySnapshot = await _experiences
+  Future<List<ExperienceModel>> getByUserId(
+    String userId, {
+    int limit = 10,
+    ExperienceModel? lastExperience,
+  }) async {
+    Query query = _experiences
         .where('userId', isEqualTo: userId)
-        .get();
-    return querySnapshot.docs
+        .orderBy('startDate', descending: true)
+        .limit(limit);
+
+    if (lastExperience != null) {
+      query = query.startAfter([lastExperience.startDate]);
+    }
+
+    final snapshot = await query.get();
+
+    return snapshot.docs
         .map((doc) => ExperienceModel.fromDocument(doc))
         .toList();
   }
@@ -60,8 +72,7 @@ class FirebaseExperienceService {
     int limit = 10,
     ExperienceModel? lastExperience,
   }) async {
-    Query query = _firestore
-        .collection('experiences')
+    Query query = _experiences
         .where('userId', isNotEqualTo: excludeUserId)
         .orderBy('startDate', descending: true)
         .limit(limit);

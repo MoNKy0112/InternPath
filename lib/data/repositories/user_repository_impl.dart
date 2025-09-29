@@ -66,4 +66,22 @@ class UserRepositoryImpl implements UserRepository {
     if (fbUser == null) return null;
     return getUserById(fbUser.uid) as User?;
   }
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) {
+    return _authService.sendPasswordResetEmail(email);
+  }
+
+  @override
+  Future<void> verifyEmail() {
+    return _authService.verifyEmail();
+  }
+
+  Future<bool> isExistingEmail(String email) async {
+    final methods = await _firestore
+        .collection('users')
+        .where('email', isEqualTo: email)
+        .get();
+    return methods.docs.isNotEmpty;
+  }
 }

@@ -86,6 +86,7 @@ class _AppScaffoldState extends State<AppScaffold> {
           NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
+      floatingActionButton: widget.scaffoldExtras['floatingActionButton'],
     );
   }
 }

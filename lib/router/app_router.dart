@@ -3,8 +3,10 @@ import 'package:internpath/presentation/screens/experiences/create_experience.da
 import 'package:internpath/presentation/screens/experiences/experience_list.dart';
 import 'package:internpath/presentation/screens/home/home_screen.dart';
 
-import 'package:internpath/presentation/screens/login/login_screen.dart';
-import 'package:internpath/presentation/screens/register/register_screen.dart';
+import 'package:internpath/presentation/screens/user/login/login_screen.dart';
+import 'package:internpath/presentation/screens/user/profile/edit_profile_screen.dart';
+import 'package:internpath/presentation/screens/user/register/register_screen.dart';
+import 'package:internpath/presentation/screens/user/reset_password/reset_password_screen.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -49,6 +51,17 @@ class AppRouter {
         name: 'personal_experience_list',
         builder: (context, state) =>
             const ExperienceList(isPersonalExperienceList: true),
+      ),
+      GoRoute(
+        path: '/profile/edit',
+        name: 'edit_profile',
+        builder: (context, state) => const EditProfileScreen(),
+      ),
+
+      GoRoute(
+        path: '/reset-password',
+        name: 'reset_password',
+        builder: (context, state) => const ResetPasswordScreen(),
       ),
     ],
   );

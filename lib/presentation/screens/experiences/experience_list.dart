@@ -39,7 +39,10 @@ class _ExperienceListState extends State<ExperienceList> {
 
     try {
       final newExperiences = widget.isPersonalExperienceList
-          ? await _experienceUseCases.getExperiencesByUserId(userId)
+          ? await _experienceUseCases.getExperiencesByUserId(
+              userId,
+              lastExperience: loadMore ? lastExperience : null,
+            )
           : await _experienceUseCases.getAllExperiences(
               excludeUserId: userId,
               lastExperience: loadMore ? lastExperience : null,
