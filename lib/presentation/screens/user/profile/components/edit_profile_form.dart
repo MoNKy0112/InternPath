@@ -1,4 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:internpath/domain/entities/user.dart';
 import 'package:internpath/domain/usecases/auth_usecases.dart';
 import 'package:internpath/presentation/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
@@ -11,26 +13,61 @@ class EditProfileForm extends StatefulWidget {
 }
 
 class _EditProfileFormState extends State<EditProfileForm> {
+  late final AuthProvider authProvider;
+  late final AuthUseCases authUseCase;
+
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _fullNameController = TextEditingController();
+  String? _photoUrl;
 
+  late User _userData;
+  late String uid;
   @override
   void initState() {
     super.initState();
+    authProvider = context.read<AuthProvider>();
+    authUseCase = context.read<AuthUseCases>();
+    final user = authProvider.currentUser;
+
+    if (user != null) {
+      uid = user.uid;
+      authUseCase.getUserById(uid).then((userData) {
+        if (userData != null) {
+          _fullNameController.text = userData.fullName;
+          _photoUrl = userData.photoUrl;
+          _userData = userData;
+        }
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-    final authUseCase = context.read<AuthUseCases>();
-
     ImageProvider<Object> loadPhoto() {
-      final user = authProvider.currentUser;
+      return CachedNetworkImageProvider(
+        _photoUrl ??
+            'https://ui-avatars.com/api/?name=${_fullNameController.text}',
+      );
+    }
 
-      if (user != null && user.photoURL != null) {
-        return NetworkImage(user.photoURL!);
-      } else {
-        return const AssetImage('assets/images/default_avatar.png');
+    Future<void> updateProfile() async {
+      if (_formKey.currentState!.validate()) {
+        final fullName = _fullNameController.text.trim();
+        // You can add more fields as needed
+
+        try {
+          await authUseCase.updateProfile(uid, {
+            'fullName': fullName,
+            // Add other fields here
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile updated successfully')),
+          );
+        } catch (e) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error updating profile: $e')));
+        }
       }
     }
 
@@ -43,7 +80,7 @@ class _EditProfileFormState extends State<EditProfileForm> {
           child: Column(
             children: [
               const SizedBox(height: 20),
-              CircleAvatar(radius: 50, backgroundImage: null /*loadPhoto()*/),
+              CircleAvatar(radius: 50, backgroundImage: loadPhoto()),
               const SizedBox(height: 20),
               TextFormField(
                 decoration: const InputDecoration(labelText: 'Full Name'),
@@ -52,11 +89,7 @@ class _EditProfileFormState extends State<EditProfileForm> {
                 child: Align(
                   alignment: Alignment.bottomCenter,
                   child: ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        // Process data.
-                      }
-                    },
+                    onPressed: updateProfile,
                     child: const Text('Actualizar Perfil'),
                   ),
                 ),

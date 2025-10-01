@@ -110,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!mounted) return;
         print('No user logged in, redirecting to login');
         print(user);
-        // context.go('/login');
+        context.go('/login');
       });
       return const SizedBox.shrink();
     }

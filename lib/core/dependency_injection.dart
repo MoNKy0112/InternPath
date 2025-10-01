@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:internpath/data/firebase/firebase_auth_service.dart';
 import 'package:internpath/data/firebase/firebase_experience_service.dart';
+import 'package:internpath/data/firebase/firebase_user_service.dart';
 import 'package:internpath/data/repositories/experience_repository_impl.dart';
 import 'package:internpath/data/repositories/user_repository_impl.dart';
 import 'package:internpath/domain/usecases/auth_usecases.dart';
@@ -20,7 +21,10 @@ class DependencyInjection {
     );
     final experienceUseCases = ExperienceUseCases(experienceRepository);
     ////User
-    final userRepository = UserRepositoryImpl(FirebaseAuthService(), firestore);
+    final userRepository = UserRepositoryImpl(
+      FirebaseAuthService(),
+      FirebaseUserService(firestore),
+    );
     final authUseCase = AuthUseCases(userRepository);
 
     return [

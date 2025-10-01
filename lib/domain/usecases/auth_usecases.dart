@@ -20,7 +20,8 @@ class AuthUseCases {
   Future<User?> getUserById(String userId) =>
       userRepository.getUserById(userId);
 
-  Future<void> updateProfile(User user) => userRepository.updateProfile(user);
+  Future<void> updateProfile(String uid, Map<String, dynamic> data) =>
+      userRepository.updateProfile(uid, data);
 
   Future<void> sendPasswordResetEmail(String email) =>
       userRepository.sendPasswordResetEmail(email);

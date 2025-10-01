@@ -6,13 +6,14 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 
-Future<void> main() async {
+Future<void> main({String flavor = "prod"}) async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(
     MultiProvider(
       providers: DependencyInjection.buildProviders(),
       child: const MyApp(),
+      // child: const MyApp(flavor: "prod"),
     ),
   );
 }

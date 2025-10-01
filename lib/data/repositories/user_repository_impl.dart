@@ -1,15 +1,18 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:internpath/data/firebase/firebase_auth_service.dart';
+import 'package:internpath/data/firebase/firebase_user_service.dart';
 import 'package:internpath/data/models/user_model.dart';
 import 'package:internpath/domain/entities/user.dart';
+import 'package:internpath/domain/entities/user_role.dart';
 import 'package:internpath/domain/repositories/user_repository.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:internpath/utils/validators.dart';
 
 class UserRepositoryImpl implements UserRepository {
   final FirebaseAuthService _authService;
-  final FirebaseFirestore _firestore;
+  final FirebaseUserService _userService;
 
-  UserRepositoryImpl(this._authService, this._firestore);
+  UserRepositoryImpl(this._authService, this._userService);
 
   @override
   Future<User> signInWithEmailAndPassword(String email, String password) async {
@@ -17,9 +20,9 @@ class UserRepositoryImpl implements UserRepository {
         .signInWithEmailAndPassword(email, password);
 
     final uid = cred.user!.uid;
-    final doc = await _firestore.collection('users').doc(uid).get();
-    final model = UserModel.fromMap(doc.data() ?? {}, uid);
-    return model.toEntity();
+    final user = await _userService.getUserById(uid);
+    if (user == null) throw Exception('User not found');
+    return user.toEntity();
   }
 
   @override
@@ -36,10 +39,12 @@ class UserRepositoryImpl implements UserRepository {
       id: uid,
       email: email,
       fullName: fullName,
+      role: UserRole.user,
       photoUrl: null,
-      createdAtMillis: DateTime.now().millisecondsSinceEpoch,
+      createdAtMillis: DateTime.now(),
+      updatedAtMillis: DateTime.now(),
     );
-    await _firestore.collection('users').doc(uid).set(model.toMap());
+    await _userService.createUser(uid, model.toMap());
     return model.toEntity();
   }
 
@@ -48,16 +53,15 @@ class UserRepositoryImpl implements UserRepository {
 
   @override
   Future<User?> getUserById(String userId) async {
-    final doc = await _firestore.collection('users').doc(userId).get();
-    if (!doc.exists) return null;
-    final model = UserModel.fromMap(doc.data()!, userId);
-    return model.toEntity();
+    final doc = await _userService.getUserById(userId);
+    return doc?.toEntity();
   }
 
   @override
-  Future<void> updateProfile(User user) async {
-    final model = UserModel.fromEntity(user);
-    await _firestore.collection('users').doc(user.id).set(model.toMap());
+  Future<void> updateProfile(String uid, Map<String, dynamic> data) async {
+    final allowedFields = {'fullName', 'photoUrl'};
+    final safeData = filterAllowedFields(data, allowedFields);
+    await _userService.updateUser(uid, safeData);
   }
 
   @override
@@ -75,13 +79,5 @@ class UserRepositoryImpl implements UserRepository {
   @override
   Future<void> verifyEmail() {
     return _authService.verifyEmail();
-  }
-
-  Future<bool> isExistingEmail(String email) async {
-    final methods = await _firestore
-        .collection('users')
-        .where('email', isEqualTo: email)
-        .get();
-    return methods.docs.isNotEmpty;
   }
 }

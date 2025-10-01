@@ -10,7 +10,7 @@ abstract class UserRepository {
   Future<void> signOut();
   User? getCurrentUser();
   Future<User?> getUserById(String userId);
-  Future<void> updateProfile(User user);
+  Future<void> updateProfile(String uid, Map<String, dynamic> data);
   Future<void> sendPasswordResetEmail(String email);
   Future<void> verifyEmail();
 }

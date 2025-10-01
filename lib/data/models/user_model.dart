@@ -1,18 +1,24 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:internpath/domain/entities/user.dart';
+import 'package:internpath/domain/entities/user_role.dart';
 
 class UserModel {
   final String id;
   final String email;
   final String fullName;
+  final UserRole role;
   final String? photoUrl;
-  final int createdAtMillis;
+  final DateTime createdAtMillis;
+  final DateTime updatedAtMillis;
 
   UserModel({
     required this.id,
     required this.email,
     required this.fullName,
+    required this.role,
     this.photoUrl,
     required this.createdAtMillis,
+    required this.updatedAtMillis,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map, String id) {
@@ -21,8 +27,14 @@ class UserModel {
       email: map['email'] as String,
       fullName: map['fullName'] as String,
       photoUrl: map['photoUrl'] as String?,
+      role: UserRole.values.firstWhere(
+        (e) => e.toString() == 'UserRole.${map['role'] ?? 'user'}',
+        orElse: () => UserRole.user,
+      ),
       createdAtMillis:
-          (map['createdAt'] as int?) ?? DateTime.now().millisecondsSinceEpoch,
+          (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAtMillis:
+          (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
@@ -30,7 +42,9 @@ class UserModel {
     'email': email,
     'fullName': fullName,
     'photoUrl': photoUrl,
+    'role': role.toString().split('.').last,
     'createdAt': createdAtMillis,
+    'updatedAt': updatedAtMillis,
   };
 
   User toEntity() {
@@ -39,7 +53,9 @@ class UserModel {
       email: email,
       fullName: fullName,
       photoUrl: photoUrl,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(createdAtMillis),
+      role: UserRole.user, // Default role; adjust as necessary
+      createdAt: createdAtMillis,
+      updatedAt: updatedAtMillis,
     );
   }
 
@@ -48,8 +64,14 @@ class UserModel {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
+      role: user.role,
       photoUrl: user.photoUrl,
-      createdAtMillis: user.createdAt.millisecondsSinceEpoch,
+      createdAtMillis: user.createdAt,
+      updatedAtMillis: user.updatedAt,
     );
+  }
+
+  factory UserModel.fromDocument(DocumentSnapshot doc) {
+    return UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
   }
 }
