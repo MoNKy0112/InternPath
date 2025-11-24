@@ -19,4 +19,9 @@ abstract class ExperienceRepository {
     int limit = 10,
     Experience? lastExperience,
   });
+  Future<List<Experience>> getExperiencesByCompanyId(
+    String companyId, {
+    int limit = 10,
+    Experience? lastExperience,
+  });
 }

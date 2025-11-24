@@ -35,6 +35,27 @@ class FirebaseExperienceService {
         .toList();
   }
 
+  Future<List<ExperienceModel>> getByCompanyId(
+    String companyId, {
+    int limit = 10,
+    ExperienceModel? lastExperience,
+  }) async {
+    Query query = _experiences
+        .where('companyId', isEqualTo: companyId)
+        .orderBy('startDate', descending: true)
+        .limit(limit);
+
+    if (lastExperience != null) {
+      query = query.startAfter([lastExperience.startDate]);
+    }
+
+    final snapshot = await query.get();
+
+    return snapshot.docs
+        .map((doc) => ExperienceModel.fromDocument(doc))
+        .toList();
+  }
+
   Future<void> create(String userId, Map<String, dynamic> data) async {
     await _experiences.add({'userId': userId, ...data});
   }
