@@ -18,17 +18,15 @@ class CompanyRepositoryImpl implements CompanyRepository {
   @override
   Future<List<Company>> getAllCompanies(
     String? searchTerm,
-    String? sortBy, {
-    int limit = 10,
+    String? sortBy,
+    int? limit,
     Company? lastCompany,
-  }) async {
+  ) async {
     final dataList = await _firebaseService.getAllCompanies(
       searchTerm,
       sortBy,
-      limit: limit,
-      lastCompany: lastCompany != null
-          ? CompanyModel.fromEntity(lastCompany)
-          : null,
+      limit,
+      lastCompany != null ? CompanyModel.fromEntity(lastCompany) : null,
     );
     return dataList.map((data) => data.toEntity()).toList();
   }

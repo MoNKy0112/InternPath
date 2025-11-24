@@ -25,11 +25,14 @@ class FirebaseCompanyService {
 
   Future<List<CompanyModel>> getAllCompanies(
     String? searchTerm,
-    String? sortBy, {
-    int limit = 10,
+    String? sortBy,
+    int? limit,
     CompanyModel? lastCompany,
-  }) {
-    Query query = _firestore.collection('companies').limit(limit);
+  ) {
+    Query query = _firestore.collection('companies');
+    if (limit != null) {
+      query = query.limit(limit);
+    }
 
     if (searchTerm != null && searchTerm.isNotEmpty) {
       query = query

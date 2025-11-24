@@ -155,7 +155,10 @@ class _HomeScreenState extends State<HomeScreen> {
             itemCount: experiences.length + 1,
             itemBuilder: (context, index) {
               if (index < experiences.length) {
-                return ExperienceCard(experience: experiences[index]);
+                return ExperienceCard(
+                  experience: experiences[index],
+                  companyName: '',
+                );
               } else {
                 return isLoading
                     ? const Center(child: CircularProgressIndicator())

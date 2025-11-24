@@ -2,8 +2,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:internpath/domain/entities/company.dart';
 import 'package:internpath/domain/entities/experience.dart';
+import 'package:internpath/domain/entities/request.dart';
+import 'package:internpath/domain/usecases/company_usecases.dart';
 import 'package:internpath/domain/usecases/experience_usecases.dart';
+import 'package:internpath/domain/usecases/request_usecases.dart';
 import 'package:internpath/utils/thousands_formatter.dart';
 import 'package:provider/provider.dart';
 
@@ -17,7 +21,10 @@ class CreateExperience extends StatefulWidget {
 }
 
 class _CreateExperienceState extends State<CreateExperience> {
-  final TextEditingController _companyController = TextEditingController();
+  // final TextEditingController _companyController = TextEditingController();
+  List<Company> _companies = [];
+  String? _selectedCompanyId;
+  String? _suggestedCompanyName;
   final TextEditingController _jobTitleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _salaryController = TextEditingController();
@@ -36,7 +43,7 @@ class _CreateExperienceState extends State<CreateExperience> {
   void initState() {
     super.initState();
     _experienceUseCases = context.read<ExperienceUseCases>();
-
+    _loadCompanies();
     if (widget.experienceId != null) {
       _loadExperience(widget.experienceId!);
     } else {
@@ -57,7 +64,7 @@ class _CreateExperienceState extends State<CreateExperience> {
 
   @override
   void dispose() {
-    _companyController.dispose();
+    _selectedCompanyId = null;
     _jobTitleController.dispose();
     _descriptionController.dispose();
     _salaryController.dispose();
@@ -79,9 +86,10 @@ class _CreateExperienceState extends State<CreateExperience> {
     final experience = await _experienceUseCases.getExperienceById(
       experienceId,
     );
+
     if (experience != null) {
       setState(() {
-        _companyController.text = experience.companyId;
+        _selectedCompanyId = experience.companyId;
         _jobTitleController.text = experience.positionTitle;
         _descriptionController.text = experience.description ?? '';
         _salaryController.text = experience.salary.toString();
@@ -99,6 +107,11 @@ class _CreateExperienceState extends State<CreateExperience> {
     }
   }
 
+  Future<void> _loadCompanies() async {
+    _companies = await context.read<CompanyUseCases>().getCompanies();
+    setState(() {});
+  }
+
   Future<void> _saveExperience() async {
     if (_formKey.currentState!.validate()) {
       final userId = FirebaseAuth.instance.currentUser?.uid;
@@ -110,7 +123,7 @@ class _CreateExperienceState extends State<CreateExperience> {
       }
       final experience = Experience(
         id: widget.experienceId ?? '',
-        companyId: _companyController.text,
+        companyId: _selectedCompanyId ?? '',
         positionTitle: _jobTitleController.text,
         description: _descriptionController.text,
         salary:
@@ -175,9 +188,25 @@ class _CreateExperienceState extends State<CreateExperience> {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                TextFormField(
-                  controller: _companyController,
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedCompanyId,
                   decoration: const InputDecoration(labelText: 'Empresa'),
+                  items: [
+                    ..._companies.map(
+                      (c) => DropdownMenuItem(value: c.id, child: Text(c.name)),
+                    ),
+                    const DropdownMenuItem(
+                      value: 'new-company',
+                      child: Text('➕ Mi empresa no aparece'),
+                    ),
+                  ],
+                  onChanged: (value) async {
+                    if (value == 'new-company') {
+                      _openNewCompanyDialog(); // 👇 lo implemento abajo
+                      return;
+                    }
+                    _selectedCompanyId = value;
+                  },
                 ),
                 TextFormField(
                   controller: _jobTitleController,
@@ -185,7 +214,31 @@ class _CreateExperienceState extends State<CreateExperience> {
                 ),
                 TextFormField(
                   controller: _descriptionController,
-                  decoration: const InputDecoration(labelText: 'Descripción'),
+                  decoration: InputDecoration(
+                    labelText: 'Descripción',
+                    alignLabelWithHint: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.all(12),
+                    counterText:
+                        "${_descriptionController.text.length}/300", // contador manual
+                  ),
+                  maxLines: 5, // varias líneas
+                  maxLength: 300, // límite de caracteres
+                  keyboardType: TextInputType.multiline,
+                  onChanged: (_) {
+                    setState(() {}); // actualiza el contador visual
+                  },
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'La descripción es obligatoria';
+                    }
+                    if (value.length > 300) {
+                      return 'Máximo 300 caracteres';
+                    }
+                    return null;
+                  },
                 ),
                 TextFormField(
                   controller: _salaryController,
@@ -296,5 +349,58 @@ class _CreateExperienceState extends State<CreateExperience> {
         ),
       ),
     );
+  }
+
+  Future<void> _openNewCompanyDialog() async {
+    final TextEditingController controller = TextEditingController();
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Sugerir nueva empresa"),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: "Nombre de la empresa"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancelar"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _selectedCompanyId = null;
+              _suggestedCompanyName = controller.text.trim();
+              Navigator.pop(context, controller.text.trim());
+            },
+            child: const Text("Enviar"),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) return;
+      if (!mounted) return;
+      final requestUseCases = context.read<RequestUseCases>();
+
+      await requestUseCases.createRequest(
+        Request(
+          id: '',
+          userId: userId,
+          type: RequestType.companySuggestion,
+          status: RequestStatus.pending,
+          data: {'companyName': result},
+        ),
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Solicitud enviada. Un modder revisará la empresa."),
+        ),
+      );
+    }
   }
 }

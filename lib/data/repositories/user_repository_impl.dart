@@ -5,7 +5,6 @@ import 'package:internpath/data/models/user_model.dart';
 import 'package:internpath/domain/entities/user.dart';
 import 'package:internpath/domain/entities/user_role.dart';
 import 'package:internpath/domain/repositories/user_repository.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:internpath/utils/validators.dart';
 
 class UserRepositoryImpl implements UserRepository {

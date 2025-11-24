@@ -25,7 +25,8 @@ class AppRouter {
       GoRoute(
         path: '/',
         name: 'home',
-        builder: (context, state) => const HomeScreen(),
+        builder: (context, state) =>
+            const ExperienceList(isPersonalExperienceList: false),
       ),
       GoRoute(
         path: '/experiences/create',

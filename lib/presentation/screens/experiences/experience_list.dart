@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:internpath/domain/entities/company.dart';
 import 'package:internpath/domain/entities/experience.dart';
+import 'package:internpath/domain/usecases/company_usecases.dart';
 import 'package:internpath/domain/usecases/experience_usecases.dart';
 import 'package:internpath/presentation/providers/auth_provider.dart';
 import 'package:internpath/presentation/widgets/app_scaffold.dart';
@@ -23,6 +25,9 @@ class _ExperienceListState extends State<ExperienceList> {
   bool isLoading = false;
   Experience? lastExperience;
 
+  Map<String, Company> companiesById = {};
+  bool companiesLoaded = false;
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +36,14 @@ class _ExperienceListState extends State<ExperienceList> {
 
     _experienceUseCases = context.read<ExperienceUseCases>();
     // _loadExperiences(user?.uid ?? '');
+
+    if (!companiesLoaded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadCompanies();
+        print('Loading companies...');
+        // _loadExperiences(context.read<AuthProvider>().currentUser!.uid);
+      });
+    }
   }
 
   Future<void> _loadExperiences(String userId, {bool loadMore = false}) async {
@@ -72,8 +85,22 @@ class _ExperienceListState extends State<ExperienceList> {
     }
   }
 
+  Future<void> _loadCompanies() async {
+    final companyUseCases = context.read<CompanyUseCases>();
+    final companies = await companyUseCases.getCompanies();
+
+    companiesById = {for (var c in companies) c.id: c};
+
+    setState(() {
+      companiesLoaded = true;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (!companiesLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
     final authProvider = context.watch<AuthProvider>();
     final user = authProvider.currentUser;
 
@@ -81,8 +108,8 @@ class _ExperienceListState extends State<ExperienceList> {
       // Redirigimos si no hay sesión
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        print('No user logged in, redirecting to login');
-        print(user);
+        // print('No user logged in, redirecting to login');
+        // print(user);
         // context.go('/login');
       });
       return const SizedBox.shrink();
@@ -113,7 +140,8 @@ class _ExperienceListState extends State<ExperienceList> {
       child: NotificationListener<ScrollNotification>(
         onNotification: (scrollInfo) {
           if (!isLoading &&
-              scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent) {
+              scrollInfo.metrics.pixels >=
+                  scrollInfo.metrics.maxScrollExtent - 50) {
             _loadExperiences(
               user.uid,
               loadMore: true,
@@ -130,7 +158,12 @@ class _ExperienceListState extends State<ExperienceList> {
             itemCount: experiences.length + 1,
             itemBuilder: (context, index) {
               if (index < experiences.length) {
-                return ExperienceCard(experience: experiences[index]);
+                return ExperienceCard(
+                  experience: experiences[index],
+                  companyName:
+                      companiesById[experiences[index].companyId]?.name ??
+                      'Empresa Desconocida',
+                );
               } else {
                 return isLoading
                     ? const Center(child: CircularProgressIndicator())

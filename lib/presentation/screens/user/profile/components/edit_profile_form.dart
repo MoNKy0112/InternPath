@@ -1,6 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:internpath/domain/entities/user.dart';
 import 'package:internpath/domain/usecases/auth_usecases.dart';
 import 'package:internpath/presentation/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
@@ -18,9 +17,8 @@ class _EditProfileFormState extends State<EditProfileForm> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _fullNameController = TextEditingController();
-  String? _photoUrl;
+  ImageProvider<Object>? _photo;
 
-  late User _userData;
   late String uid;
   @override
   void initState() {
@@ -34,21 +32,21 @@ class _EditProfileFormState extends State<EditProfileForm> {
       authUseCase.getUserById(uid).then((userData) {
         if (userData != null) {
           _fullNameController.text = userData.fullName;
-          _photoUrl = userData.photoUrl;
-          _userData = userData;
+          _photo = loadPhoto(userData.photoUrl);
         }
       });
     }
   }
 
+  ImageProvider<Object> loadPhoto(String? url) {
+    return CachedNetworkImageProvider(
+      url ?? 'https://ui-avatars.com/api/?name=${_fullNameController.text}',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    ImageProvider<Object> loadPhoto() {
-      return CachedNetworkImageProvider(
-        _photoUrl ??
-            'https://ui-avatars.com/api/?name=${_fullNameController.text}',
-      );
-    }
+    // Cargar al inicio
 
     Future<void> updateProfile() async {
       if (_formKey.currentState!.validate()) {
@@ -60,6 +58,7 @@ class _EditProfileFormState extends State<EditProfileForm> {
             'fullName': fullName,
             // Add other fields here
           });
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Profile updated successfully')),
           );
@@ -80,7 +79,7 @@ class _EditProfileFormState extends State<EditProfileForm> {
           child: Column(
             children: [
               const SizedBox(height: 20),
-              CircleAvatar(radius: 50, backgroundImage: loadPhoto()),
+              CircleAvatar(radius: 50, backgroundImage: _photo),
               const SizedBox(height: 20),
               TextFormField(
                 decoration: const InputDecoration(labelText: 'Full Name'),

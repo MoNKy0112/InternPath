@@ -3,12 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:internpath/domain/entities/experience.dart';
 import 'package:internpath/domain/usecases/experience_usecases.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class ExperienceCard extends StatelessWidget {
   final Experience experience;
+  final String companyName;
 
-  const ExperienceCard({super.key, required this.experience});
+  const ExperienceCard({
+    super.key,
+    required this.experience,
+    required this.companyName,
+  });
 
   Future<void> deleteExperience(
     BuildContext context,
@@ -63,6 +69,7 @@ class ExperienceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final DateFormat dateFormat = DateFormat('dd-MM-yyyy');
     return Card(
       elevation: 4,
       child: Padding(
@@ -81,11 +88,11 @@ class ExperienceCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   Text(
-                    experience.companyId,
+                    companyName,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   Text(
-                    '${experience.startDate.toString()} - ${experience.endDate.toString()}',
+                    '${dateFormat.format(experience.startDate)} - ${dateFormat.format(experience.endDate)}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: 8),

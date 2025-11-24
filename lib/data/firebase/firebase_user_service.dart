@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:internpath/data/models/user_model.dart';
-import 'package:internpath/domain/entities/user.dart';
 
 class FirebaseUserService {
   final FirebaseFirestore _firestore;
