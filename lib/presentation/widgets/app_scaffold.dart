@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:internpath/presentation/providers/auth_provider.dart';
 import 'package:internpath/presentation/widgets/profile_bottom_sheet.dart';
+import 'package:provider/provider.dart';
 
 class AppScaffold extends StatefulWidget {
   const AppScaffold({
@@ -29,9 +31,15 @@ class _AppScaffoldState extends State<AppScaffold> {
       setState(() => _showProfileSheet = false);
     }
 
+    // determinar homeRoute dinámicamente: prioridad scaffoldExtras, si no, según rol
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final String homeRoute =
+        (widget.scaffoldExtras['homeRoute'] as String?) ??
+        (authProvider.isModder ? '/requests' : '/');
+
     switch (index) {
       case 0:
-        context.go('/');
+        context.go(homeRoute);
         break;
       case 1:
         context.go('/search');
@@ -64,26 +72,21 @@ class _AppScaffoldState extends State<AppScaffold> {
           Align(
             alignment: Alignment.bottomCenter,
             child: ProfileBottomSheet(
-              offset: _showProfileSheet ? Offset(0, 0) : const Offset(0, 1),
+              offset: _showProfileSheet
+                  ? const Offset(0, 0)
+                  : const Offset(0, 1),
               duration: const Duration(milliseconds: 300),
             ),
           ),
         ],
       ),
-      // bottomSheet: _showProfileSheet
-      //     ? ProfileBottomSheet(
-      //         onClose: () {
-      //           setState(() => _showProfileSheet = false);
-      //         },
-      //       )
-      //     : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: widget.currentPageIndex,
         onDestinationSelected: (index) => _onItemTapped(context, index),
         destinations: const <NavigationDestination>[
-          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.search), label: 'Search'),
-          NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
+          NavigationDestination(icon: Icon(Icons.home), label: 'Inicio'),
+          NavigationDestination(icon: Icon(Icons.search), label: 'Buscar'),
+          NavigationDestination(icon: Icon(Icons.person), label: 'Perfil'),
         ],
       ),
       floatingActionButton: widget.scaffoldExtras['floatingActionButton'],

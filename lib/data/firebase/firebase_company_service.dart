@@ -6,8 +6,11 @@ class FirebaseCompanyService {
 
   FirebaseCompanyService(this._firestore);
 
-  Future<void> addCompany(CompanyModel company) async {
-    await _firestore.collection('companies').add(company.toMap());
+  Future<String> addCompany(CompanyModel company) async {
+    final docRef = await _firestore
+        .collection('companies')
+        .add(company.toMap());
+    return docRef.id;
   }
 
   Future<void> updateCompany(String id, Map<String, dynamic> data) async {

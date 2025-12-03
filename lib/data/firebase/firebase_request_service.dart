@@ -7,6 +7,10 @@ class FirebaseRequestService {
     await _collection.add(data);
   }
 
+  Future<DocumentSnapshot> getById(String requestId) {
+    return _collection.doc(requestId).get();
+  }
+
   Future<QuerySnapshot> getByUser(String userId) {
     return _collection.where('userId', isEqualTo: userId).get();
   }

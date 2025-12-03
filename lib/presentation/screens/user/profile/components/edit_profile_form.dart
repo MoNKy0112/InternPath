@@ -17,85 +17,336 @@ class _EditProfileFormState extends State<EditProfileForm> {
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _fullNameController = TextEditingController();
-  ImageProvider<Object>? _photo;
+
+  bool _editingName = false;
+  bool _saving = false;
 
   late String uid;
+
   @override
   void initState() {
     super.initState();
     authProvider = context.read<AuthProvider>();
     authUseCase = context.read<AuthUseCases>();
     final user = authProvider.currentUser;
+    uid = user?.uid ?? '';
 
-    if (user != null) {
-      uid = user.uid;
-      authUseCase.getUserById(uid).then((userData) {
-        if (userData != null) {
-          _fullNameController.text = userData.fullName;
-          _photo = loadPhoto(userData.photoUrl);
-        }
-      });
+    // inicializar desde domainUser si ya está cargado
+    final domainUser = authProvider.domainUser;
+    if (domainUser != null) {
+      _fullNameController.text = domainUser.fullName;
+    }
+
+    // escuchar cambios en provider para actualizar UI
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // si domainUser cambia más adelante, actualizar nombre en controller si no está en edición
+      authProvider.addListener(_onAuthProviderChanged);
+    });
+  }
+
+  void _onAuthProviderChanged() {
+    final domainUser = authProvider.domainUser;
+    if (domainUser != null && !_editingName) {
+      _fullNameController.text = domainUser.fullName;
+      if (mounted) setState(() {});
     }
   }
 
-  ImageProvider<Object> loadPhoto(String? url) {
-    return CachedNetworkImageProvider(
-      url ?? 'https://ui-avatars.com/api/?name=${_fullNameController.text}',
-    );
+  @override
+  void dispose() {
+    authProvider.removeListener(_onAuthProviderChanged);
+    _fullNameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveName() async {
+    final newName = _fullNameController.text.trim();
+    if (newName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El nombre no puede estar vacío')),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await authUseCase.updateProfile(uid, {'fullName': newName});
+      // refrescar dominio
+      await authProvider.refreshDomainUser();
+      if (!mounted) return;
+      setState(() {
+        _editingName = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Nombre actualizado')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al actualizar nombre: $e')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _cancelEdit() {
+    final domainUser = authProvider.domainUser;
+    _fullNameController.text = domainUser?.fullName ?? '';
+    setState(() {
+      _editingName = false;
+    });
+  }
+
+  ImageProvider<Object> _avatarProvider() {
+    final domainUser = authProvider.domainUser;
+    final fullName = domainUser?.fullName ?? 'User';
+    final photoUrl = domainUser?.photoUrl;
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      return CachedNetworkImageProvider(photoUrl);
+    }
+    final url =
+        'https://ui-avatars.com/api/?name=${Uri.encodeComponent(fullName)}&background=0D8ABC&color=fff&size=256';
+    return CachedNetworkImageProvider(url);
+  }
+
+  String _formatDate(DateTime? d) {
+    if (d == null) return '-';
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
   }
 
   @override
   Widget build(BuildContext context) {
-    // Cargar al inicio
+    final domainUser = context.watch<AuthProvider>().domainUser;
 
-    Future<void> updateProfile() async {
-      if (_formKey.currentState!.validate()) {
-        final fullName = _fullNameController.text.trim();
-        // You can add more fields as needed
-
-        try {
-          await authUseCase.updateProfile(uid, {
-            'fullName': fullName,
-            // Add other fields here
-          });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile updated successfully')),
-          );
-        } catch (e) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error updating profile: $e')));
-        }
-      }
+    if (domainUser == null) {
+      return const Center(child: CircularProgressIndicator());
     }
 
-    return Form(
-      key: _formKey,
-      child: Card(
-        margin: const EdgeInsets.all(10.0),
-        child: Container(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              CircleAvatar(radius: 50, backgroundImage: _photo),
-              const SizedBox(height: 20),
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Full Name'),
-              ),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: ElevatedButton(
-                    onPressed: updateProfile,
-                    child: const Text('Actualizar Perfil'),
+    return Card(
+      margin: const EdgeInsets.all(12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 3,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header: avatar + basic info
+            Row(
+              children: [
+                ClipOval(
+                  child: SizedBox(
+                    width: 84,
+                    height: 84,
+                    child: CachedNetworkImage(
+                      imageUrl:
+                          (_avatarProvider() as CachedNetworkImageProvider).url,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[200],
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[200],
+                        child: const Icon(
+                          Icons.person,
+                          size: 36,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Nombre editable inline (reemplazado para mejor visualización)
+                      _editingName
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                TextFormField(
+                                  controller: _fullNameController,
+                                  style: const TextStyle(fontSize: 18),
+                                  minLines: 1,
+                                  maxLines:
+                                      2, // permite nombres largos en 2 líneas
+                                  decoration: const InputDecoration(
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      vertical: 12,
+                                      horizontal: 12,
+                                    ),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    IconButton(
+                                      tooltip: 'Guardar',
+                                      onPressed: _saving ? null : _saveName,
+                                      icon: _saving
+                                          ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            )
+                                          : const Icon(
+                                              Icons.check,
+                                              color: Colors.green,
+                                            ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    IconButton(
+                                      tooltip: 'Cancelar',
+                                      onPressed: _saving ? null : _cancelEdit,
+                                      icon: const Icon(
+                                        Icons.close,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            )
+                          : Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    domainUser.fullName,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  tooltip: 'Editar nombre',
+                                  onPressed: () {
+                                    setState(() {
+                                      _editingName = true;
+                                      _fullNameController.text =
+                                          domainUser.fullName;
+                                    });
+                                  },
+                                  icon: const Icon(Icons.edit, size: 20),
+                                ),
+                              ],
+                            ),
+                      const SizedBox(height: 6),
+                      Text(
+                        domainUser.email,
+                        style: TextStyle(color: Colors.grey[700]),
+                      ),
+                      const SizedBox(height: 6),
+                      Chip(
+                        label: Text(
+                          domainUser.role
+                              .toString()
+                              .split('.')
+                              .last
+                              .toUpperCase(),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        backgroundColor: Colors.grey.shade100,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+            // Detalle completo
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
               ),
-              const SizedBox(height: 20),
-            ],
-          ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const SizedBox(
+                        width: 8,
+                        child: Icon(Icons.calendar_today, size: 18),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Creado:',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_formatDate(domainUser.createdAt))),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const SizedBox(
+                        width: 8,
+                        child: Icon(Icons.update, size: 18),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Actualizado:',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_formatDate(domainUser.updatedAt))),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            // Acciones adicionales
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      // Forzar refresh de user domain
+                      await authProvider.refreshDomainUser();
+                      if (mounted)
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Datos actualizados')),
+                        );
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Refrescar datos'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueGrey,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    // permitir al usuario salir de edición si está en pantalla (fallback)
+                    if (Navigator.canPop(context)) Navigator.pop(context);
+                  },
+                  icon: const Icon(Icons.close),
+                  label: const Text('Cerrar'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+          ],
         ),
       ),
     );

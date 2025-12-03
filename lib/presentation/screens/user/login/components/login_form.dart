@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:internpath/domain/usecases/auth_usecases.dart';
+import 'package:internpath/domain/entities/user_role.dart';
 import 'package:provider/provider.dart';
 
 class LoginForm extends StatefulWidget {
@@ -37,36 +38,37 @@ class _LoginFormState extends State<LoginForm> {
   }
 
   Future<void> login() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        loading = true;
-      });
-      final email = _emailController.text;
-      final password = _passwordController.text;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Intentando iniciar sesión con $email")),
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => loading = true);
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    try {
+      final user = await _authUseCases.signInWithEmailAndPassword(
+        email,
+        password,
       );
-      // Loader
-      await _authUseCases
-          .signInWithEmailAndPassword(email, password)
-          .then((user) {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Bienvenido ${user.fullName}")),
-            );
-            context.go('/home');
-          })
-          .catchError((error) {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Error al iniciar sesión: $error")),
-            );
-          })
-          .whenComplete(() {
-            setState(() {
-              loading = false;
-            });
-          });
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Bienvenido ${user.fullName}")));
+
+      // navegar según rol: si es modder -> requests, si no -> home (experiences)
+      final isModder = user.role == UserRole.modder;
+      if (isModder) {
+        context.go('/requests');
+      } else {
+        context.go('/');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error al iniciar sesión: $e")));
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
   }
 

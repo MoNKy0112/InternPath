@@ -17,7 +17,7 @@ class CompanyUseCases {
   }) =>
       companyRepository.getAllCompanies(searchTerm, sortBy, limit, lastCompany);
 
-  Future<void> addCompany(Company company) =>
+  Future<String> addCompany(Company company) =>
       companyRepository.addCompany(company);
 
   Future<void> updateCompany(String companyId, Company company) =>

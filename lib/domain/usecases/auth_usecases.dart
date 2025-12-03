@@ -15,13 +15,16 @@ class AuthUseCases {
     String password,
   ) => userRepository.registerWithEmailAndPassword(fullName, email, password);
 
+  Future<User> registerModder(String fullName, String email, String password) =>
+      userRepository.registerModder(fullName, email, password);
+
   Future<void> signOut() => userRepository.signOut();
 
   Future<User?> getUserById(String userId) =>
       userRepository.getUserById(userId);
 
   Future<void> updateProfile(String uid, Map<String, dynamic> data) =>
-      userRepository.updateProfile(uid, data);
+      userRepository.updateUserProfile(uid, data);
 
   Future<void> sendPasswordResetEmail(String email) =>
       userRepository.sendPasswordResetEmail(email);

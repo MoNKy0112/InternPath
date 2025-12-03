@@ -17,35 +17,30 @@ class ProfileBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
-    final user = authProvider.currentUser;
+    final firebaseUser = authProvider.currentUser;
     final authUseCases = context.read<AuthUseCases>();
-    if (user == null) {
-      // Si no hay usuario, redirigir a la pantalla de login
+
+    // si no hay usuario firebase, redirigir al login
+    if (firebaseUser == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        print('No user logged in, redirecting to login');
-        print(user);
         context.go('/login');
       });
       return const SizedBox.shrink();
     }
 
-    void _editProfile() {
-      context.go('/profile/edit');
-    }
+    final domainUser = authProvider.domainUser;
+    final isLoadingDomainUser = authProvider.isLoadingDomainUser;
+    final isAdmin = authProvider.isAdmin;
 
-    void _viewExperiences() {
-      context.go('/experiences/personal');
-    }
+    print("authProvider.domainUser: ${authProvider.domainUser?.role}");
 
-    void _viewSettings() {
-      context.go('/settings');
-    }
+    void viewExperiences() => context.go('/experiences/personal');
+    void viewSettings() => context.go('/settings');
+    void viewAdmin() => context.go('/admin');
 
-    void _logout() async {
+    void logout() async {
       await authUseCases.signOut();
-      if (context.mounted) {
-        context.go('/login');
-      }
+      if (context.mounted) context.go('/login');
     }
 
     return AnimatedSlide(
@@ -69,15 +64,14 @@ class ProfileBottomSheet extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Ejemplo de contenido
               Row(
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundImage: user.photoURL != null
-                        ? NetworkImage(user.photoURL!)
+                    backgroundImage: firebaseUser.photoURL != null
+                        ? NetworkImage(firebaseUser.photoURL!)
                         : null,
-                    child: user.photoURL == null
+                    child: firebaseUser.photoURL == null
                         ? const Icon(Icons.person, size: 30)
                         : null,
                   ),
@@ -86,36 +80,73 @@ class ProfileBottomSheet extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        user.displayName != "" ? user.displayName! : "Usuario",
+                        (firebaseUser.displayName != null &&
+                                firebaseUser.displayName!.isNotEmpty)
+                            ? firebaseUser.displayName!
+                            : "Usuario",
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (user.email != null)
-                        Text(user.email!, style: const TextStyle(fontSize: 14)),
+                      if (firebaseUser.email != null)
+                        Text(
+                          firebaseUser.email!,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      const SizedBox(height: 6),
+                      // mostrar rol si ya está cargado
+                      if (isLoadingDomainUser)
+                        const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else if (domainUser != null)
+                        Text(
+                          domainUser.role
+                              .toString()
+                              .split('.')
+                              .last
+                              .toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
                     ],
-                  ),
-                  TextButton(
-                    onPressed: _editProfile,
-                    child: const Text("Editar"),
                   ),
                 ],
               ),
+
+              const SizedBox(height: 12),
               ListTile(
                 leading: const Icon(Icons.work),
                 title: const Text("Mis Experiencias"),
-                onTap: _viewExperiences,
+                onTap: viewExperiences,
               ),
               ListTile(
                 leading: const Icon(Icons.settings),
                 title: const Text("Configuración"),
-                onTap: _viewSettings,
+                onTap: viewSettings,
               ),
+
+              // opción admin solo si el dominio indica admin
+              if (!isLoadingDomainUser && isAdmin)
+                ListTile(
+                  leading: const Icon(
+                    Icons.admin_panel_settings,
+                    color: Colors.deepPurple,
+                  ),
+                  title: const Text("Operaciones admin"),
+                  subtitle: const Text('Registrar modders · CRUD de empresas'),
+                  onTap: viewAdmin,
+                ),
+
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.red),
                 title: const Text("Cerrar sesión"),
-                onTap: _logout,
+                onTap: logout,
               ),
             ],
           ),

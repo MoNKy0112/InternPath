@@ -8,7 +8,6 @@ import 'package:internpath/data/repositories/company_repository_impl.dart';
 import 'package:internpath/data/repositories/experience_repository_impl.dart';
 import 'package:internpath/data/repositories/request_repository_impl.dart';
 import 'package:internpath/data/repositories/user_repository_impl.dart';
-import 'package:internpath/domain/repositories/company_repository.dart';
 import 'package:internpath/domain/usecases/auth_usecases.dart';
 import 'package:internpath/domain/usecases/company_usecases.dart';
 import 'package:internpath/domain/usecases/experience_usecases.dart';
@@ -47,11 +46,13 @@ class DependencyInjection {
     final requestUseCases = RequestUseCases(requestRepository);
 
     return [
-      ChangeNotifierProvider<AuthProvider>(create: (_) => AuthProvider()),
       Provider<ExperienceUseCases>.value(value: experienceUseCases),
       Provider<AuthUseCases>.value(value: authUseCase),
       Provider<CompanyUseCases>.value(value: companyUseCases),
       Provider<RequestUseCases>.value(value: requestUseCases),
+      ChangeNotifierProvider<AuthProvider>(
+        create: (ctx) => AuthProvider(ctx.read<AuthUseCases>()),
+      ),
     ];
   }
 }

@@ -7,9 +7,11 @@ abstract class UserRepository {
     String email,
     String password,
   );
+  Future<User> registerModder(String fullName, String email, String password);
   Future<void> signOut();
   User? getCurrentUser();
   Future<User?> getUserById(String userId);
+  Future<void> updateUserProfile(String uid, Map<String, dynamic> data);
   Future<void> updateProfile(String uid, Map<String, dynamic> data);
   Future<void> sendPasswordResetEmail(String email);
   Future<void> verifyEmail();

@@ -32,9 +32,9 @@ class CompanyRepositoryImpl implements CompanyRepository {
   }
 
   @override
-  Future<void> addCompany(Company company) async {
+  Future<String> addCompany(Company company) async {
     final model = CompanyModel.fromEntity(company);
-    await _firebaseService.addCompany(model);
+    return await _firebaseService.addCompany(model);
   }
 
   @override

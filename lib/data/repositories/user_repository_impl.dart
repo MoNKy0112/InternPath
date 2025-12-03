@@ -30,8 +30,10 @@ class UserRepositoryImpl implements UserRepository {
     String email,
     String password,
   ) async {
-    final fb.UserCredential cred = await _authService
-        .registerWithEmailAndPassword(email, password);
+    final fb.UserCredential cred = await _authService.registerAndSignIn(
+      email,
+      password,
+    );
 
     final uid = cred.user!.uid;
     final model = UserModel(
@@ -39,6 +41,31 @@ class UserRepositoryImpl implements UserRepository {
       email: email,
       fullName: fullName,
       role: UserRole.user,
+      photoUrl: null,
+      createdAtMillis: DateTime.now(),
+      updatedAtMillis: DateTime.now(),
+    );
+    await _userService.createUser(uid, model.toMap());
+    return model.toEntity();
+  }
+
+  @override
+  Future<User> registerModder(
+    String fullName,
+    String email,
+    String password,
+  ) async {
+    final fb.UserCredential cred = await _authService.registerWithoutSignIn(
+      email,
+      password,
+    );
+
+    final uid = cred.user!.uid;
+    final model = UserModel(
+      id: uid,
+      email: email,
+      fullName: fullName,
+      role: UserRole.modder,
       photoUrl: null,
       createdAtMillis: DateTime.now(),
       updatedAtMillis: DateTime.now(),
@@ -57,10 +84,15 @@ class UserRepositoryImpl implements UserRepository {
   }
 
   @override
-  Future<void> updateProfile(String uid, Map<String, dynamic> data) async {
+  Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
     final allowedFields = {'fullName', 'photoUrl'};
     final safeData = filterAllowedFields(data, allowedFields);
     await _userService.updateUser(uid, safeData);
+  }
+
+  @override
+  Future<void> updateProfile(String uid, Map<String, dynamic> data) {
+    return updateUserProfile(uid, data);
   }
 
   @override

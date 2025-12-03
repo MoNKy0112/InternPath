@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:internpath/domain/entities/experience.dart';
 import 'package:internpath/domain/usecases/experience_usecases.dart';
-import 'package:intl/intl.dart';
+import 'package:internpath/utils/date_formatter.dart';
 import 'package:provider/provider.dart';
 
 class ExperienceCard extends StatelessWidget {
@@ -63,64 +63,72 @@ class ExperienceCard extends StatelessWidget {
   }
 
   void editExperience(BuildContext context, String experienceId) {
-    // redireccionar a la pantalla de edición
-    context.go('/experiences/edit/$experienceId');
+    // empujar la pantalla de edición para mantener historial (back funciona)
+    context.push('/experiences/edit/$experienceId');
   }
 
   @override
   Widget build(BuildContext context) {
-    final DateFormat dateFormat = DateFormat('dd-MM-yyyy');
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.work, size: 40, color: Colors.blue),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onTap: () {
+        // usar push para que se pueda hacer pop/back correctamente
+        context.push('/experiences/detail/${experience.id}');
+      },
+      child: Card(
+        elevation: 4,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.work, size: 40, color: Colors.blue),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      experience.positionTitle,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    Text(
+                      companyName,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    Text(
+                      DateFormatter().formatDateRange(
+                        start: experience.startDate,
+                        end: experience.endDate,
+                      ),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      experience.description ?? '',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+              Column(
                 children: [
-                  Text(
-                    experience.positionTitle,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  Text(
-                    companyName,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  Text(
-                    '${dateFormat.format(experience.startDate)} - ${dateFormat.format(experience.endDate)}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    experience.description ?? '',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+                  // si el usuario actual es el dueño de la experiencia, mostrar botones de editar y eliminar
+                  if (FirebaseAuth.instance.currentUser?.uid ==
+                      experience.userId) ...[
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.grey),
+                      onPressed: () => editExperience(context, experience.id),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () =>
+                          showDeleteExperienceDialog(context, experience.id),
+                    ),
+                  ],
                 ],
               ),
-            ),
-            Column(
-              children: [
-                // si el usuario actual es el dueño de la experiencia, mostrar botones de editar y eliminar
-                if (FirebaseAuth.instance.currentUser?.uid ==
-                    experience.userId) ...[
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.grey),
-                    onPressed: () => editExperience(context, experience.id),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () =>
-                        showDeleteExperienceDialog(context, experience.id),
-                  ),
-                ],
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

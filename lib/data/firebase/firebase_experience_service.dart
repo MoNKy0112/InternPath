@@ -56,8 +56,9 @@ class FirebaseExperienceService {
         .toList();
   }
 
-  Future<void> create(String userId, Map<String, dynamic> data) async {
-    await _experiences.add({'userId': userId, ...data});
+  Future<String> create(String userId, Map<String, dynamic> data) async {
+    final experience = await _experiences.add({'userId': userId, ...data});
+    return experience.id;
   }
 
   Future<void> update(

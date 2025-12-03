@@ -6,7 +6,7 @@ class ExperienceUseCases {
 
   ExperienceUseCases(this.experienceRepository);
 
-  Future<void> addExperience(String userId, Experience experience) =>
+  Future<String> addExperience(String userId, Experience experience) =>
       experienceRepository.addExperience(userId, experience);
 
   Future<void> updateExperience(
@@ -37,6 +37,22 @@ class ExperienceUseCases {
     Experience? lastExperience,
   }) => experienceRepository.getAllExperiences(
     excludeUserId: excludeUserId,
+    limit: limit,
+    lastExperience: lastExperience,
+  );
+
+  Future<List<Experience>> searchExperiences(
+    String userId,
+    String query, {
+    int limit = 50,
+  }) => experienceRepository.searchExperiences(userId, query, limit: limit);
+
+  Future<List<Experience>> getExperiencesByCompanyId(
+    String companyId, {
+    int limit = 10,
+    Experience? lastExperience,
+  }) => experienceRepository.getExperiencesByCompanyId(
+    companyId,
     limit: limit,
     lastExperience: lastExperience,
   );

@@ -9,6 +9,9 @@ class RequestUseCases {
   Future<void> createRequest(Request request) =>
       requestRepository.createRequest(request);
 
+  Future<Request> getRequestById(String requestId) =>
+      requestRepository.getRequestById(requestId);
+
   Future<List<Request>> getRequestsByUser(String userId) =>
       requestRepository.getRequestsByUser(userId);
 

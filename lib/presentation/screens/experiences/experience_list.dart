@@ -24,25 +24,61 @@ class _ExperienceListState extends State<ExperienceList> {
   final List<Experience> experiences = [];
   bool isLoading = false;
   Experience? lastExperience;
-
+  AuthProvider get _authProvider => context.read<AuthProvider>();
   Map<String, Company> companiesById = {};
   bool companiesLoaded = false;
+
+  // Nuevas variables para controlar la carga incremental y evitar peticiones rápidas
+  final ScrollController _scrollController = ScrollController();
+  bool _hasMore = true;
+  DateTime? _lastLoadMoreAttempt;
+  final Duration _loadMoreCooldown = const Duration(milliseconds: 800);
+
+  static const int _pageSize = 20;
 
   @override
   void initState() {
     super.initState();
-
-    // final user = context.watch<AuthProvider>().currentUser;
-
+    if (_authProvider.currentUser == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.go('/login');
+      });
+      return;
+    }
     _experienceUseCases = context.read<ExperienceUseCases>();
-    // _loadExperiences(user?.uid ?? '');
 
     if (!companiesLoaded) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadCompanies();
-        print('Loading companies...');
-        // _loadExperiences(context.read<AuthProvider>().currentUser!.uid);
       });
+    }
+
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    // solo intentar cargar más si el usuario está scrolleando hacia abajo
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    // comprobar dirección del scroll (ScrollController no expone directamente, usamos delta)
+    // aquí asumimos que queremos cargar cuando el usuario alcance cercano al final y haya desplazamiento posible
+    if (pos.pixels >= pos.maxScrollExtent - 120) {
+      final now = DateTime.now();
+      if (_lastLoadMoreAttempt != null &&
+          now.difference(_lastLoadMoreAttempt!) < _loadMoreCooldown) {
+        return; // cooldown para evitar ráfagas
+      }
+      _lastLoadMoreAttempt = now;
+
+      if (!_hasMore || isLoading) return;
+      _loadExperiences(_authProvider.currentUser!.uid, loadMore: true);
     }
   }
 
@@ -55,13 +91,15 @@ class _ExperienceListState extends State<ExperienceList> {
           ? await _experienceUseCases.getExperiencesByUserId(
               userId,
               lastExperience: loadMore ? lastExperience : null,
+              limit: _pageSize,
             )
           : await _experienceUseCases.getAllExperiences(
               excludeUserId: userId,
               lastExperience: loadMore ? lastExperience : null,
+              limit: _pageSize,
             );
 
-      if (!mounted) return; // 👈 aquí verificamos antes de modificar el estado
+      if (!mounted) return;
 
       setState(() {
         if (loadMore) {
@@ -74,10 +112,12 @@ class _ExperienceListState extends State<ExperienceList> {
         if (newExperiences.isNotEmpty) {
           lastExperience = newExperiences.last;
         }
+        // si recibimos menos que el tamaño de página, asumimos que no hay más por ahora
+        _hasMore = newExperiences.length == _pageSize;
         isLoading = false;
       });
     } catch (e) {
-      if (!mounted) return; // 👈 aquí también
+      if (!mounted) return;
       setState(() => isLoading = false);
       ScaffoldMessenger.of(
         context,
@@ -96,6 +136,16 @@ class _ExperienceListState extends State<ExperienceList> {
     });
   }
 
+  Future<void> _handleRefresh() async {
+    // al refrescar permitimos volver a intentar cargar más en caso de que haya nuevas
+    _hasMore = true;
+    lastExperience = null;
+    await _loadExperiences(
+      context.read<AuthProvider>().currentUser!.uid,
+      loadMore: false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!companiesLoaded) {
@@ -105,13 +155,7 @@ class _ExperienceListState extends State<ExperienceList> {
     final user = authProvider.currentUser;
 
     if (user == null) {
-      // Redirigimos si no hay sesión
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        // print('No user logged in, redirecting to login');
-        // print(user);
-        // context.go('/login');
-      });
+      // evita redirección automática repetida
       return const SizedBox.shrink();
     }
 
@@ -119,7 +163,7 @@ class _ExperienceListState extends State<ExperienceList> {
     if (experiences.isEmpty && !isLoading) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _loadExperiences(user.uid);
+        _loadExperiences(user.uid, loadMore: false);
       });
     }
 
@@ -127,7 +171,7 @@ class _ExperienceListState extends State<ExperienceList> {
       title: widget.isPersonalExperienceList
           ? "Mis Experiencias"
           : "Experiencias",
-      currentPageIndex: 2,
+      currentPageIndex: widget.isPersonalExperienceList ? 2 : 0,
       scaffoldExtras: {
         'floatingActionButton': FloatingActionButton(
           onPressed: () {
@@ -137,40 +181,32 @@ class _ExperienceListState extends State<ExperienceList> {
         ),
         'floatingActionButtonLocation': FloatingActionButtonLocation.endFloat,
       },
-      child: NotificationListener<ScrollNotification>(
-        onNotification: (scrollInfo) {
-          if (!isLoading &&
-              scrollInfo.metrics.pixels >=
-                  scrollInfo.metrics.maxScrollExtent - 50) {
-            _loadExperiences(
-              user.uid,
-              loadMore: true,
-            ); // 👈 carga más al llegar abajo
-          }
-          return false;
-        },
-        child: RefreshIndicator(
-          onRefresh: () async {
-            // 👈 aquí vuelves a cargar desde el inicio
-            await _loadExperiences(user.uid, loadMore: false);
+      child: RefreshIndicator(
+        // ajuste visual del indicador
+        displacement: 28,
+        edgeOffset: 4,
+        onRefresh: _handleRefresh,
+        child: ListView.builder(
+          controller: _scrollController,
+          physics:
+              const AlwaysScrollableScrollPhysics(), // <- permite pull-to-refresh aunque la lista no ocupe toda la pantalla
+          itemCount: experiences.length + (_hasMore ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index < experiences.length) {
+              return ExperienceCard(
+                experience: experiences[index],
+                companyName:
+                    companiesById[experiences[index].companyId]?.name ??
+                    'Empresa Desconocida',
+              );
+            } else {
+              // indicador de carga final; si no hay más, no se muestra por el itemCount
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 14),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
           },
-          child: ListView.builder(
-            itemCount: experiences.length + 1,
-            itemBuilder: (context, index) {
-              if (index < experiences.length) {
-                return ExperienceCard(
-                  experience: experiences[index],
-                  companyName:
-                      companiesById[experiences[index].companyId]?.name ??
-                      'Empresa Desconocida',
-                );
-              } else {
-                return isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : const SizedBox();
-              }
-            },
-          ),
         ),
       ),
     );

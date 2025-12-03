@@ -8,7 +8,7 @@ abstract class CompanyRepository {
     int? limit,
     Company? lastCompany,
   );
-  Future<void> addCompany(Company company);
+  Future<String> addCompany(Company company);
   Future<void> updateCompany(String companyId, Company company);
   Future<void> deleteCompany(String companyId);
 }

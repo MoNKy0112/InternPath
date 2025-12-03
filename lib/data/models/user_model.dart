@@ -53,7 +53,7 @@ class UserModel {
       email: email,
       fullName: fullName,
       photoUrl: photoUrl,
-      role: UserRole.user, // Default role; adjust as necessary
+      role: role,
       createdAt: createdAtMillis,
       updatedAt: updatedAtMillis,
     );

@@ -1,7 +1,7 @@
 import 'package:internpath/domain/entities/experience.dart';
 
 abstract class ExperienceRepository {
-  Future<void> addExperience(String userId, Experience experience);
+  Future<String> addExperience(String userId, Experience experience);
   Future<void> updateExperience(
     String userId,
     String experienceId,
@@ -23,5 +23,12 @@ abstract class ExperienceRepository {
     String companyId, {
     int limit = 10,
     Experience? lastExperience,
+  });
+
+  // Nuevo: búsqueda de experiencias por texto (cliente-side fallback)
+  Future<List<Experience>> searchExperiences(
+    String userId,
+    String query, {
+    int limit = 50,
   });
 }

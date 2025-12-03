@@ -13,13 +13,22 @@ class RequestRepositoryImpl implements RequestRepository {
     final model = RequestModel(
       id: request.id,
       userId: request.userId,
+      userName: request.userName,
       type: request.type,
       status: request.status,
       data: request.data,
       modderId: request.modderId,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
 
     await _firebaseService.create(model.toMap());
+  }
+
+  @override
+  Future<Request> getRequestById(String requestId) async {
+    final doc = await _firebaseService.getById(requestId);
+    return RequestModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
   }
 
   @override
@@ -53,6 +62,7 @@ class RequestRepositoryImpl implements RequestRepository {
     await _firebaseService.updateStatus(requestId, {
       'status': status.name,
       'modderId': modderId,
+      'updatedAt': DateTime.now().toIso8601String(),
     });
   }
 }

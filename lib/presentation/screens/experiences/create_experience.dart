@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +7,7 @@ import 'package:internpath/domain/entities/request.dart';
 import 'package:internpath/domain/usecases/company_usecases.dart';
 import 'package:internpath/domain/usecases/experience_usecases.dart';
 import 'package:internpath/domain/usecases/request_usecases.dart';
+import 'package:internpath/presentation/providers/auth_provider.dart';
 import 'package:internpath/utils/thousands_formatter.dart';
 import 'package:provider/provider.dart';
 
@@ -25,6 +25,7 @@ class _CreateExperienceState extends State<CreateExperience> {
   List<Company> _companies = [];
   String? _selectedCompanyId;
   String? _suggestedCompanyName;
+  bool requestInProcess = false;
   final TextEditingController _jobTitleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _salaryController = TextEditingController();
@@ -39,9 +40,12 @@ class _CreateExperienceState extends State<CreateExperience> {
 
   late final Experience? experience;
 
+  late AuthProvider authProvider;
+
   @override
   void initState() {
     super.initState();
+    authProvider = context.read<AuthProvider>();
     _experienceUseCases = context.read<ExperienceUseCases>();
     _loadCompanies();
     if (widget.experienceId != null) {
@@ -57,8 +61,10 @@ class _CreateExperienceState extends State<CreateExperience> {
         continueOption: false,
         startDate: DateTime.now(),
         endDate: DateTime.now(),
-        userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+        userId: authProvider.domainUser?.id ?? '',
       );
+      requestInProcess = false;
+      _suggestedCompanyName = '';
     }
   }
 
@@ -72,11 +78,13 @@ class _CreateExperienceState extends State<CreateExperience> {
     _continueOption = false;
     _startDateController.dispose();
     _endDateController.dispose();
+    requestInProcess = false;
+    _suggestedCompanyName = '';
     super.dispose();
   }
 
   Future<void> _loadExperience(String experienceId) async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
+    final userId = authProvider.domainUser?.id;
     if (userId == null) {
       ScaffoldMessenger.of(
         context,
@@ -114,7 +122,7 @@ class _CreateExperienceState extends State<CreateExperience> {
 
   Future<void> _saveExperience() async {
     if (_formKey.currentState!.validate()) {
-      final userId = FirebaseAuth.instance.currentUser?.uid;
+      final userId = authProvider.domainUser?.id;
       if (userId == null) {
         ScaffoldMessenger.of(
           context,
@@ -137,7 +145,15 @@ class _CreateExperienceState extends State<CreateExperience> {
       );
 
       if (widget.experienceId == null) {
-        await _experienceUseCases.addExperience(userId, experience);
+        final newExperienceId = await _experienceUseCases.addExperience(
+          userId,
+          experience,
+        );
+        if (requestInProcess &&
+            _suggestedCompanyName != null &&
+            _suggestedCompanyName!.isNotEmpty) {
+          createCompanyRequest(newExperienceId);
+        }
       } else {
         await _experienceUseCases.updateExperience(
           userId,
@@ -160,25 +176,56 @@ class _CreateExperienceState extends State<CreateExperience> {
     }
   }
 
+  void createCompanyRequest(String experienceId) async {
+    final userId = authProvider.domainUser?.id;
+    if (userId == null) return;
+    if (!mounted) return;
+    final requestUseCases = context.read<RequestUseCases>();
+
+    await requestUseCases.createRequest(
+      Request(
+        id: '',
+        userId: userId,
+        userName: authProvider.domainUser?.fullName ?? 'Desconocido',
+        type: RequestType.companySuggestion,
+        status: RequestStatus.pending,
+        data: {
+          'companyName': _suggestedCompanyName,
+          'experienceId': experienceId,
+        },
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Solicitud enviada. Un modder revisará la empresa."),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () {
-                context.go('/');
-              },
-            ),
-            Text(
-              widget.experienceId == null
-                  ? 'Crear Experiencia'
-                  : 'Editar Experiencia',
-            ),
-          ],
+        // único botón de retroceso: intenta pop, si no puede hace fallback a la lista
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            final router = GoRouter.of(context);
+            if (router.canPop()) {
+              router.pop();
+            } else {
+              router.go('/'); // fallback si no hay historial
+            }
+          },
+        ),
+        title: Text(
+          widget.experienceId == null
+              ? 'Crear Experiencia'
+              : 'Editar Experiencia',
         ),
       ),
       body: Center(
@@ -189,7 +236,7 @@ class _CreateExperienceState extends State<CreateExperience> {
             child: Column(
               children: [
                 DropdownButtonFormField<String>(
-                  initialValue: _selectedCompanyId,
+                  value: requestInProcess ? 'new-company' : _selectedCompanyId,
                   decoration: const InputDecoration(labelText: 'Empresa'),
                   items: [
                     ..._companies.map(
@@ -202,16 +249,76 @@ class _CreateExperienceState extends State<CreateExperience> {
                   ],
                   onChanged: (value) async {
                     if (value == 'new-company') {
-                      _openNewCompanyDialog(); // 👇 lo implemento abajo
+                      // abrir diálogo para sugerir o editar empresa sugerida
+                      final edited = await _openNewCompanyDialog(
+                        initial: _suggestedCompanyName ?? '',
+                      );
+                      if (edited ?? false) {
+                        setState(() {
+                          requestInProcess = true;
+                          _selectedCompanyId = null;
+                        });
+                      }
                       return;
+                    } else {
+                      // selección de una empresa existente
+                      setState(() {
+                        requestInProcess = false;
+                        _suggestedCompanyName = '';
+                        _selectedCompanyId = value;
+                      });
                     }
-                    _selectedCompanyId = value;
                   },
                 ),
+
+                // Mostrar la sugerencia (editable) si está activa
+                if (requestInProcess &&
+                    (_suggestedCompanyName != null &&
+                        _suggestedCompanyName!.isNotEmpty))
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0, bottom: 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Empresa sugerida',
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _suggestedCompanyName!,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Editar sugerencia',
+                                  onPressed: () async {
+                                    final edited = await _openNewCompanyDialog(
+                                      initial: _suggestedCompanyName ?? '',
+                                    );
+                                    if (edited ?? false) {
+                                      setState(() {});
+                                    }
+                                  },
+                                  icon: const Icon(Icons.edit, size: 20),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 TextFormField(
                   controller: _jobTitleController,
                   decoration: const InputDecoration(labelText: 'Cargo'),
                 ),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _descriptionController,
                   decoration: InputDecoration(
@@ -328,16 +435,34 @@ class _CreateExperienceState extends State<CreateExperience> {
                   children: [
                     ElevatedButton(
                       onPressed: _saveExperience,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(
+                          255,
+                          100,
+                          181,
+                          246,
+                        ),
+                      ),
                       child: Text(
                         widget.experienceId == null ? 'Crear' : 'Actualizar',
                       ),
                     ),
                     ElevatedButton(
                       onPressed: () {
-                        context.go('/');
+                        final router = GoRouter.of(context);
+                        if (router.canPop()) {
+                          router.pop();
+                        } else {
+                          router.go('/');
+                        }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey,
+                        backgroundColor: const Color.fromARGB(
+                          255,
+                          245,
+                          131,
+                          123,
+                        ),
                       ),
                       child: const Text('Cancelar'),
                     ),
@@ -351,27 +476,36 @@ class _CreateExperienceState extends State<CreateExperience> {
     );
   }
 
-  Future<void> _openNewCompanyDialog() async {
-    final TextEditingController controller = TextEditingController();
+  Future<bool?> _openNewCompanyDialog({String initial = ''}) async {
+    final TextEditingController controller = TextEditingController(
+      text: initial,
+    );
 
-    final result = await showDialog<String>(
+    final result = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Sugerir nueva empresa"),
+        title: Text(
+          initial.isEmpty ? "Sugerir nueva empresa" : "Editar empresa sugerida",
+        ),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(labelText: "Nombre de la empresa"),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text("Cancelar"),
           ),
           ElevatedButton(
             onPressed: () {
-              _selectedCompanyId = null;
-              _suggestedCompanyName = controller.text.trim();
-              Navigator.pop(context, controller.text.trim());
+              final value = controller.text.trim();
+              if (value.isEmpty) return;
+              setState(() {
+                _suggestedCompanyName = value;
+                requestInProcess = true;
+                _selectedCompanyId = null;
+              });
+              Navigator.pop(context, true);
             },
             child: const Text("Enviar"),
           ),
@@ -379,28 +513,6 @@ class _CreateExperienceState extends State<CreateExperience> {
       ),
     );
 
-    if (result != null && result.isNotEmpty) {
-      final userId = FirebaseAuth.instance.currentUser?.uid;
-      if (userId == null) return;
-      if (!mounted) return;
-      final requestUseCases = context.read<RequestUseCases>();
-
-      await requestUseCases.createRequest(
-        Request(
-          id: '',
-          userId: userId,
-          type: RequestType.companySuggestion,
-          status: RequestStatus.pending,
-          data: {'companyName': result},
-        ),
-      );
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Solicitud enviada. Un modder revisará la empresa."),
-        ),
-      );
-    }
+    return result;
   }
 }

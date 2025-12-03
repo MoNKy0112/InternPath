@@ -49,14 +49,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       decoration: InputDecoration(labelText: 'Email'),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Please enter your email';
+                          return 'Por favor ingresa tu email';
                         }
                         return null;
                       },
                     ),
                     ElevatedButton(
                       onPressed: resetPassword,
-                      child: Text('Reset Password'),
+                      child: Text('Restablecer Contraseña'),
                     ),
                   ],
                 ),
@@ -66,7 +66,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         ),
       ),
       appBar: AppBar(
-        title: const Text('Reset Password'),
+        title: const Text('Restablecer Contraseña'),
         leading: BackButton(onPressed: _goBack),
       ),
     );
